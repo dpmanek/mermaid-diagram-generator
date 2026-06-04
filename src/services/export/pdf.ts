@@ -3,7 +3,7 @@ import jsPDF from "jspdf";
 import { imageExportOptions } from "./download";
 
 export async function exportPdf(node: HTMLElement, title: string, filename = "archforge-diagram.pdf") {
-  const dataUrl = await toPng(node, imageExportOptions());
+  const dataUrl = await toPng(node, imageExportOptions(node));
   const pdf = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();

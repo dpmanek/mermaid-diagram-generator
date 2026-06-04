@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ReactFlowProvider, type OnConnect, type OnReconnect } from "@xyflow/react";
+import { ReactFlowProvider, type OnConnect, type OnReconnect, type ReactFlowInstance } from "@xyflow/react";
 import { DiagramCanvas } from "./components/Canvas";
 import { CanvasInteractionContext } from "./components/Canvas/CanvasInteractionContext";
 import { LeftPanel } from "./components/LeftPanel";
@@ -17,19 +17,28 @@ import { loadProject, usePersistence } from "./hooks/usePersistence";
 import { useProject } from "./hooks/useProject";
 import { useSelection } from "./hooks/useSelection";
 import { validateMermaid } from "./services/mermaid";
-import type { ArchitectureNode, LayoutDirection, ThemeId } from "./types/architecture";
+import type { ArchitectureNode, LayoutDirection, MermaidDiagramType, ThemeId, VisualSettings } from "./types/architecture";
 import "./styles/index.css";
 
 const stored = loadProject();
+const initialSample = samples.find((sample) => sample.mermaid === stored?.originalMermaid) ?? samples[0];
+const DEFAULT_VISUAL_SETTINGS: VisualSettings = { edgeThickness: 2.4, textSize: 13 };
 
 export default function App() {
   const [title, setTitle] = useState(stored?.title ?? "");
   const [description, setDescription] = useState(stored?.description ?? "");
-  const [selectedSampleId, setSelectedSampleId] = useState(samples[0].id);
-  const [mermaidCode, setMermaidCode] = useState(stored?.originalMermaid ?? samples[0].mermaid);
+  const [selectedSampleId, setSelectedSampleId] = useState(initialSample.id);
+  const [mermaidCode, setMermaidCode] = useState(stored?.originalMermaid ?? initialSample.mermaid);
+  const [diagramType, setDiagramType] = useState<MermaidDiagramType>(
+    stored?.diagramType ?? initialSample.diagramType ?? "flowchart"
+  );
   const [themeId, setThemeId] = useState<ThemeId>(stored?.theme ?? "dark-enterprise");
   const [layoutDirection, setLayoutDirection] = useState<LayoutDirection>(stored?.layoutDirection ?? "LR");
-  const [validation, setValidation] = useState<{ valid: boolean | null; message: string }>({
+  const [visualSettings, setVisualSettings] = useState<VisualSettings>({
+    edgeThickness: stored?.visualSettings?.edgeThickness ?? DEFAULT_VISUAL_SETTINGS.edgeThickness,
+    textSize: stored?.visualSettings?.textSize ?? DEFAULT_VISUAL_SETTINGS.textSize
+  });
+  const [validation, setValidation] = useState<{ valid: boolean | null; message: string; diagramType?: MermaidDiagramType }>({
     valid: null,
     message: ""
   });
@@ -38,6 +47,7 @@ export default function App() {
   const [clipboardNodeIds, setClipboardNodeIds] = useState<string[]>([]);
 
   const canvasRef = useRef<HTMLDivElement | null>(null);
+  const flowInstanceRef = useRef<ReactFlowInstance | null>(null);
   const didInit = useRef(false);
 
   const architecture = useArchitecture(stored?.model);
@@ -54,12 +64,14 @@ export default function App() {
   const { flowNodes, flowEdges, onNodesChange, onEdgesChange, clearFlowSelection } = useFlowSync({
     model: architecture.model,
     themeId,
+    visualSettings,
     onSync: handleSync
   });
 
   const { generateFromCode, isLoading } = useGeneration({
     onModel: (model) => architecture.setModel(model),
     onDirection: setLayoutDirection,
+    onDiagramType: setDiagramType,
     onValidation: setValidation,
     onSuggestions: setSuggestions,
     onClearSelection: selection.clear
@@ -106,6 +118,7 @@ export default function App() {
 
   const { relayout, changeDirection } = useLayoutActions({
     architecture,
+    diagramType,
     layoutDirection,
     setLayoutDirection
   });
@@ -114,14 +127,16 @@ export default function App() {
     title,
     description,
     mermaidCode,
+    diagramType,
     model: architecture.model,
     themeId,
     layoutDirection,
+    visualSettings,
     suggestions
   });
 
   usePersistence(project);
-  const handleExport = useExportHandlers(project, canvasRef);
+  const handleExport = useExportHandlers(project, canvasRef, flowInstanceRef);
 
   useKeyboardShortcuts({
     onUndo: architecture.undo,
@@ -189,6 +204,7 @@ export default function App() {
     if (!sample) return;
     setSelectedSampleId(id);
     setMermaidCode(sample.mermaid);
+    setDiagramType(sample.diagramType ?? "flowchart");
     void generateFromCode(sample.mermaid);
   };
 
@@ -207,7 +223,9 @@ export default function App() {
           sampleId={selectedSampleId}
           themeId={themeId}
           direction={layoutDirection}
+          visualSettings={visualSettings}
           mermaidCode={mermaidCode}
+          diagramType={diagramType}
           validation={validation}
           isLoading={isLoading}
           exportDisabled={!architecture.model.nodes.length || isLoading}
@@ -216,8 +234,14 @@ export default function App() {
           onSampleChange={handleSampleChange}
           onThemeChange={setThemeId}
           onDirectionChange={(direction) => void changeDirection(direction)}
+          onVisualSettingsChange={setVisualSettings}
           onMermaidChange={setMermaidCode}
-          onValidate={() => void validateMermaid(mermaidCode).then(setValidation)}
+          onValidate={() =>
+            void validateMermaid(mermaidCode).then((result) => {
+              setValidation(result);
+              if (result.diagramType) setDiagramType(result.diagramType);
+            })
+          }
           onGenerate={() => void generateFromCode(mermaidCode)}
           onRelayout={() => void relayout()}
           onExport={(format) => void handleExport(format)}
@@ -228,9 +252,13 @@ export default function App() {
             nodes={flowNodes}
             edges={flowEdges}
             theme={theme}
+            visualSettings={visualSettings}
             canvasRef={canvasRef}
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
+            onFlowReady={(instance) => {
+              flowInstanceRef.current = instance;
+            }}
             onConnect={handleConnect}
             onReconnect={handleReconnect}
             onSelectionChange={handleSelectionChange}

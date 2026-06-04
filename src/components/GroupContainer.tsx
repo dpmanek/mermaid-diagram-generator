@@ -42,7 +42,7 @@ export function GroupContainer({ id, data, selected }: NodeProps) {
   return (
     <div
       className="architecture-group"
-      onClick={(event) => {
+      onClick={() => {
         if (isSelected && !editing) ix.beginEdit(id);
       }}
       onDoubleClick={(event) => {

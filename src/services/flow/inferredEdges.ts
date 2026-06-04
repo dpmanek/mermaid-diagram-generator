@@ -1,5 +1,5 @@
 import type { Edge } from "@xyflow/react";
-import type { ArchitectureGroup, ArchitectureTheme } from "../../types/architecture";
+import type { ArchitectureGroup, ArchitectureTheme, VisualSettings } from "../../types/architecture";
 import type { GroupBounds } from "./groupBounds";
 import { makeRelationshipEdge } from "./edgeStyle";
 
@@ -8,7 +8,8 @@ type PositionedGroup = { group: ArchitectureGroup; bounds: GroupBounds };
 export function inferGroupRelationships(
   visibleGroups: ArchitectureGroup[],
   groupBounds: Map<string, GroupBounds>,
-  theme: ArchitectureTheme
+  theme: ArchitectureTheme,
+  visualSettings: VisualSettings
 ): Edge[] {
   const positioned = visibleGroups
     .map<PositionedGroup | undefined>((group) => {
@@ -29,11 +30,29 @@ export function inferGroupRelationships(
     const itemY = item.bounds.y + item.bounds.height / 2;
     if (itemX < centerX - 80 && Math.abs(itemY - centerY) < center.bounds.height) {
       out.push(
-        makeRelationshipEdge(`inferred_${item.group.id}_${center.group.id}`, item.group.id, center.group.id, undefined, "sync", theme, groupBounds)
+        makeRelationshipEdge(
+          `inferred_${item.group.id}_${center.group.id}`,
+          item.group.id,
+          center.group.id,
+          undefined,
+          "sync",
+          theme,
+          visualSettings,
+          groupBounds
+        )
       );
     } else if (itemX > centerX + 80 && Math.abs(itemY - centerY) < center.bounds.height) {
       out.push(
-        makeRelationshipEdge(`inferred_${center.group.id}_${item.group.id}`, center.group.id, item.group.id, undefined, "sync", theme, groupBounds)
+        makeRelationshipEdge(
+          `inferred_${center.group.id}_${item.group.id}`,
+          center.group.id,
+          item.group.id,
+          undefined,
+          "sync",
+          theme,
+          visualSettings,
+          groupBounds
+        )
       );
     }
   }
@@ -43,7 +62,18 @@ export function inferGroupRelationships(
     .sort((a, b) => a.bounds.y - b.bounds.y);
   let previous = center.group.id;
   for (const item of lower) {
-    out.push(makeRelationshipEdge(`inferred_${previous}_${item.group.id}`, previous, item.group.id, undefined, "async", theme, groupBounds));
+    out.push(
+      makeRelationshipEdge(
+        `inferred_${previous}_${item.group.id}`,
+        previous,
+        item.group.id,
+        undefined,
+        "async",
+        theme,
+        visualSettings,
+        groupBounds
+      )
+    );
     previous = item.group.id;
   }
 

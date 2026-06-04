@@ -113,6 +113,7 @@ function upsertNode(node: ParsedNode, ctx: Context) {
 
 function finalize(direction: LayoutDirection, ctx: Context): ParseResult {
   return {
+    diagramType: "flowchart",
     direction,
     nodes: Array.from(ctx.nodes.values()),
     edges: ctx.edges,

@@ -1,5 +1,6 @@
 import mermaid from "mermaid";
-import { parseMermaidFlowchart } from "./parser";
+import { detectMermaidDiagramType, diagramTypeLabel } from "./detect";
+import { parseMermaidDiagram } from "./diagramParser";
 import { sanitizeMermaid } from "./sanitize";
 
 mermaid.initialize({ startOnLoad: false, securityLevel: "strict" });
@@ -8,12 +9,15 @@ export async function validateMermaid(source: string) {
   const sanitized = sanitizeMermaid(source);
   try {
     await mermaid.parse(sanitized, { suppressErrors: false });
-    parseMermaidFlowchart(sanitized);
-    return { valid: true, message: "Mermaid syntax is valid." };
+    const parsed = await parseMermaidDiagram(sanitized);
+    const label = diagramTypeLabel(parsed.diagramType);
+    return { valid: true, message: `${label} syntax is valid and importable.`, diagramType: parsed.diagramType };
   } catch (error) {
+    const diagramType = detectMermaidDiagramType(sanitized);
     return {
       valid: false,
-      message: error instanceof Error ? error.message : "Mermaid validation failed."
+      message: error instanceof Error ? error.message : "Mermaid validation failed.",
+      diagramType
     };
   }
 }

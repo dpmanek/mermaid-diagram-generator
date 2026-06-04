@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
-import { BaseEdge, EdgeLabelRenderer, getSmoothStepPath, type EdgeProps } from "@xyflow/react";
+import { BaseEdge, EdgeLabelRenderer, getBezierPath, getSmoothStepPath, type EdgeProps } from "@xyflow/react";
 import { Trash2 } from "lucide-react";
-import type { ArchitectureEdge } from "../../types/architecture";
+import type { ArchitectureEdge, VisualSettings } from "../../types/architecture";
 import { useCanvasInteraction } from "./CanvasInteractionContext";
 
 type EdgeData = {
   edge?: ArchitectureEdge;
   labelColor?: string;
   labelBg?: string;
+  visualSettings?: VisualSettings;
+  pathVariant?: "soft" | "step";
 };
 
 export function EditableEdge({
@@ -24,18 +26,24 @@ export function EditableEdge({
   selected,
   data
 }: EdgeProps) {
-  const [edgePath, labelX, labelY] = getSmoothStepPath({
+  const { edge, labelColor, labelBg, visualSettings, pathVariant } = (data ?? {}) as EdgeData;
+  const pathArgs = {
     sourceX,
     sourceY,
     sourcePosition,
     targetX,
     targetY,
-    targetPosition,
-    borderRadius: 8
-  });
+    targetPosition
+  };
+  const [edgePath, labelX, labelY] =
+    pathVariant === "soft"
+      ? getBezierPath(pathArgs)
+      : getSmoothStepPath({
+          ...pathArgs,
+          borderRadius: 8
+        });
 
   const ix = useCanvasInteraction();
-  const { edge, labelColor, labelBg } = (data ?? {}) as EdgeData;
   const isSelected = Boolean(selected);
   const editable = isSelected && Boolean(edge);
   const [draft, setDraft] = useState((label as string) ?? "");
@@ -66,6 +74,7 @@ export function EditableEdge({
           <div className="edge-toolbar nodrag nopan" style={{ transform }}>
             <input
               className="edge-label-input"
+              style={{ fontSize: visualSettings?.textSize }}
               value={draft}
               placeholder="label"
               onChange={(event) => setDraft(event.target.value)}
@@ -100,7 +109,7 @@ export function EditableEdge({
         ) : label ? (
           <div
             className="edge-label-chip"
-            style={{ transform, color: labelColor, background: labelBg }}
+            style={{ transform, color: labelColor, background: labelBg, fontSize: visualSettings?.textSize }}
           >
             {label}
           </div>

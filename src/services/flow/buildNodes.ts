@@ -1,10 +1,10 @@
 import type { Node } from "@xyflow/react";
 import { themes } from "../../data/themes";
-import type { ArchitectureModel, ThemeId } from "../../types/architecture";
+import type { ArchitectureModel, ThemeId, VisualSettings } from "../../types/architecture";
 import { getVisibleGroupId } from "../../utils/groups";
 import { DEFAULT_NODE_HEIGHT, DEFAULT_NODE_WIDTH, buildGroupBounds } from "./groupBounds";
 
-export function buildFlowNodes(model: ArchitectureModel, themeId: ThemeId): Node[] {
+export function buildFlowNodes(model: ArchitectureModel, themeId: ThemeId, visualSettings: VisualSettings): Node[] {
   const theme = themes[themeId];
   const { visibleGroups, groupBounds } = buildGroupBounds(model);
 
@@ -41,7 +41,7 @@ export function buildFlowNodes(model: ArchitectureModel, themeId: ThemeId): Node
       position: bounds
         ? { x: (node.position?.x ?? 0) - bounds.x, y: (node.position?.y ?? 0) - bounds.y }
         : node.position ?? { x: 0, y: 0 },
-      data: { node, theme },
+      data: { node, theme, visualSettings },
       zIndex: node.zIndex ?? 1
     };
   });

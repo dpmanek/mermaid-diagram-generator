@@ -7,44 +7,55 @@ import {
   type OnEdgesChange,
   type OnNodesChange
 } from "@xyflow/react";
-import type { ArchitectureModel, ThemeId } from "../types/architecture";
+import type { ArchitectureModel, ThemeId, VisualSettings } from "../types/architecture";
 import { buildFlowEdges, buildFlowNodes, syncModelFromFlow } from "../services/flow";
 
 type Args = {
   model: ArchitectureModel;
   themeId: ThemeId;
+  visualSettings: VisualSettings;
   onSync: (model: ArchitectureModel) => void;
 };
 
-export function useFlowSync({ model, themeId, onSync }: Args) {
+export function useFlowSync({ model, themeId, visualSettings, onSync }: Args) {
   const [flowNodes, setFlowNodes] = useState<Node[]>([]);
   const [flowEdges, setFlowEdges] = useState<Edge[]>([]);
 
   const flowNodesRef = useRef(flowNodes);
   const flowEdgesRef = useRef(flowEdges);
   const modelRef = useRef(model);
-  flowNodesRef.current = flowNodes;
-  flowEdgesRef.current = flowEdges;
-  modelRef.current = model;
+
+  useEffect(() => {
+    flowNodesRef.current = flowNodes;
+  }, [flowNodes]);
+
+  useEffect(() => {
+    flowEdgesRef.current = flowEdges;
+  }, [flowEdges]);
+
+  useEffect(() => {
+    modelRef.current = model;
+  }, [model]);
 
   useEffect(() => {
     const prevNodeSelection = new Map(flowNodesRef.current.map((node) => [node.id, node.selected]));
     const prevEdgeSelection = new Map(flowEdgesRef.current.map((edge) => [edge.id, edge.selected]));
-    setFlowNodes(
-      buildFlowNodes(model, themeId).map((node) =>
-        prevNodeSelection.get(node.id) ? { ...node, selected: true } : node
-      )
+    const nextNodes = buildFlowNodes(model, themeId, visualSettings).map((node) =>
+      prevNodeSelection.get(node.id) ? { ...node, selected: true } : node
     );
-    setFlowEdges(
-      buildFlowEdges(model, themeId).map((edge) =>
-        prevEdgeSelection.get(edge.id) ? { ...edge, selected: true } : edge
-      )
+    const nextEdges = buildFlowEdges(model, themeId, visualSettings).map((edge) =>
+      prevEdgeSelection.get(edge.id) ? { ...edge, selected: true } : edge
     );
-  }, [model, themeId]);
+    flowNodesRef.current = nextNodes;
+    flowEdgesRef.current = nextEdges;
+    setFlowNodes(nextNodes);
+    setFlowEdges(nextEdges);
+  }, [model, themeId, visualSettings]);
 
   const onNodesChange: OnNodesChange = useCallback(
     (changes) => {
       const next = applyNodeChanges(changes, flowNodesRef.current);
+      flowNodesRef.current = next;
       setFlowNodes(next);
       const shouldSync = changes.some((change) => change.type === "position" || change.type === "remove");
       if (shouldSync) onSync(syncModelFromFlow(modelRef.current, next, flowEdgesRef.current));
@@ -55,6 +66,7 @@ export function useFlowSync({ model, themeId, onSync }: Args) {
   const onEdgesChange: OnEdgesChange = useCallback(
     (changes) => {
       const next = applyEdgeChanges(changes, flowEdgesRef.current);
+      flowEdgesRef.current = next;
       setFlowEdges(next);
       const shouldSync = changes.some((change) => change.type === "remove");
       if (shouldSync) {

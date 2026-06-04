@@ -1,4 +1,5 @@
 import type { GroupBounds } from "./groupBounds";
+import type { ArchitectureModel } from "../../types/architecture";
 
 export type HandlePair = { sourceHandle: string; targetHandle: string };
 
@@ -31,4 +32,39 @@ export function handlesForRelationship(
   return targetBounds.x >= sourceBounds.x
     ? { sourceHandle: "group-right-out", targetHandle: "group-left-in" }
     : { sourceHandle: "group-left-out", targetHandle: "group-right-in" };
+}
+
+export function handlesForNodeRelationship(
+  source: string,
+  target: string,
+  nodesById: Map<string, ArchitectureModel["nodes"][number]>
+): Partial<HandlePair> {
+  const sourceNode = nodesById.get(source);
+  const targetNode = nodesById.get(target);
+  if (!sourceNode?.position || !targetNode?.position) return {};
+
+  const sourceWidth = sourceNode.size?.width ?? 220;
+  const sourceHeight = sourceNode.size?.height ?? 96;
+  const targetWidth = targetNode.size?.width ?? 220;
+  const targetHeight = targetNode.size?.height ?? 96;
+  const sourceCenter = {
+    x: sourceNode.position.x + sourceWidth / 2,
+    y: sourceNode.position.y + sourceHeight / 2
+  };
+  const targetCenter = {
+    x: targetNode.position.x + targetWidth / 2,
+    y: targetNode.position.y + targetHeight / 2
+  };
+  const dx = targetCenter.x - sourceCenter.x;
+  const dy = targetCenter.y - sourceCenter.y;
+
+  if (Math.abs(dx) > Math.abs(dy)) {
+    return dx >= 0
+      ? { sourceHandle: "node-right-out", targetHandle: "node-left-in" }
+      : { sourceHandle: "node-left-out", targetHandle: "node-right-in" };
+  }
+
+  return dy >= 0
+    ? { sourceHandle: "node-bottom-out", targetHandle: "node-top-in" }
+    : { sourceHandle: "node-top-out", targetHandle: "node-bottom-in" };
 }

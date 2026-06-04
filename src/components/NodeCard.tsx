@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { Handle, NodeResizer, NodeToolbar, Position, type NodeProps } from "@xyflow/react";
 import * as Icons from "lucide-react";
 import { Copy, Pencil, Trash2 } from "lucide-react";
-import type { ArchitectureNode, ArchitectureTheme } from "../types/architecture";
+import type { ArchitectureNode, ArchitectureTheme, VisualSettings } from "../types/architecture";
 import { nodeTypeOptions } from "../utils/classification";
 import { colorOptions } from "../data/iconMap";
 import { useCanvasInteraction } from "./Canvas/CanvasInteractionContext";
@@ -10,6 +10,7 @@ import { useCanvasInteraction } from "./Canvas/CanvasInteractionContext";
 type NodeData = {
   node: ArchitectureNode;
   theme: ArchitectureTheme;
+  visualSettings: VisualSettings;
 };
 
 const iconRegistry = Icons as unknown as Record<string, Icons.LucideIcon>;
@@ -29,7 +30,7 @@ const typeAccent: Record<string, string> = {
 };
 
 export function NodeCard({ id, data, selected }: NodeProps) {
-  const { node, theme } = data as NodeData;
+  const { node, theme, visualSettings } = data as NodeData;
   const ix = useCanvasInteraction();
   const isSelected = Boolean(selected);
   const editing = isSelected && ix.editingId === id;
@@ -41,6 +42,8 @@ export function NodeCard({ id, data, selected }: NodeProps) {
 
   const Icon = iconRegistry[node.icon ?? "Box"] ?? Icons.Box;
   const accent = node.color ?? typeAccent[node.type] ?? theme.accent;
+  const isCircle = node.shape === "circle";
+  const showIcon = !isCircle && node.type !== "unknown";
 
   const commit = () => {
     const label = draft.trim();
@@ -50,8 +53,8 @@ export function NodeCard({ id, data, selected }: NodeProps) {
 
   return (
     <div
-      className={`architecture-node node-type-${node.type}`}
-      onClick={(event) => {
+      className={`architecture-node node-type-${node.type}${isCircle ? " node-shape-circle" : ""}${showIcon ? "" : " node-no-icon"}`}
+      onClick={() => {
         if (isSelected && !editing) ix.beginEdit(id);
       }}
       onDoubleClick={(event) => {
@@ -61,16 +64,17 @@ export function NodeCard({ id, data, selected }: NodeProps) {
       style={{
         width: node.size?.width ?? 210,
         minHeight: node.size?.height ?? 104,
+        height: isCircle ? (node.size?.height ?? node.size?.width ?? 156) : undefined,
         color: theme.text,
-        background: theme.nodeFill,
-        borderColor: isSelected ? accent : theme.nodeBorder,
+        background: `linear-gradient(135deg, ${theme.nodeFill} 0%, ${theme.nodeFill} 54%, ${accent}16 100%)`,
+        borderColor: isSelected ? accent : `${accent}80`,
         boxShadow: isSelected ? `0 0 0 3px ${accent}33, ${theme.shadow}` : theme.shadow
-      }}
+      } as CSSProperties}
     >
       <NodeResizer
         isVisible={isSelected && !editing}
-        minWidth={140}
-        minHeight={72}
+        minWidth={isCircle ? 104 : 140}
+        minHeight={isCircle ? 104 : 72}
         lineClassName="node-resizer-line"
         handleClassName="node-resizer-handle"
         onResizeEnd={(_, params) => {
@@ -120,18 +124,25 @@ export function NodeCard({ id, data, selected }: NodeProps) {
         </button>
       </NodeToolbar>
 
-      <Handle type="target" position={Position.Left} className="architecture-handle" />
-      <Handle type="source" position={Position.Right} className="architecture-handle" />
-      <Handle type="target" position={Position.Top} className="architecture-handle" />
-      <Handle type="source" position={Position.Bottom} className="architecture-handle" />
-      <div className="node-content">
-        <div className="node-icon" style={{ color: accent, background: `${accent}16`, borderColor: `${accent}30` }}>
-          <Icon size={19} strokeWidth={2.2} />
-        </div>
+      <Handle id="node-left-in" type="target" position={Position.Left} className="architecture-handle" />
+      <Handle id="node-left-out" type="source" position={Position.Left} className="architecture-handle" />
+      <Handle id="node-right-in" type="target" position={Position.Right} className="architecture-handle" />
+      <Handle id="node-right-out" type="source" position={Position.Right} className="architecture-handle" />
+      <Handle id="node-top-in" type="target" position={Position.Top} className="architecture-handle" />
+      <Handle id="node-top-out" type="source" position={Position.Top} className="architecture-handle" />
+      <Handle id="node-bottom-in" type="target" position={Position.Bottom} className="architecture-handle" />
+      <Handle id="node-bottom-out" type="source" position={Position.Bottom} className="architecture-handle" />
+      <div className={`node-content${showIcon ? "" : " node-content-plain"}`}>
+        {showIcon ? (
+          <div className="node-icon" style={{ color: accent, background: `${accent}16`, borderColor: `${accent}30` }}>
+            <Icon size={19} strokeWidth={2.2} />
+          </div>
+        ) : null}
         <div className="node-copy">
           {editing ? (
             <input
               className="node-label-input nodrag nopan"
+              style={{ fontSize: visualSettings.textSize }}
               autoFocus
               value={draft}
               onChange={(event) => setDraft(event.target.value)}
@@ -149,16 +160,16 @@ export function NodeCard({ id, data, selected }: NodeProps) {
               }}
             />
           ) : (
-            <div className="node-title">{node.label}</div>
+            <div className="node-title" style={{ fontSize: visualSettings.textSize }}>{node.label}</div>
           )}
-          <div className="node-meta">
+          {isCircle ? null : <div className="node-meta">
             {node.type !== "unknown" ? (
               <span className="node-badge" style={{ color: theme.badgeText, background: theme.badgeFill }}>
                 {node.type}
               </span>
             ) : null}
             {node.technology ? <span className="node-tech">{node.technology}</span> : null}
-          </div>
+          </div>}
         </div>
       </div>
       {isSelected && !editing ? (

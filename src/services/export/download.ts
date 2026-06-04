@@ -15,11 +15,14 @@ export function downloadBlob(content: BlobPart, filename: string, type: string) 
   URL.revokeObjectURL(url);
 }
 
-export function imageExportOptions() {
+export function imageExportOptions(node?: HTMLElement) {
+  const backgroundColor = node ? getComputedStyle(node).backgroundColor : "#ffffff";
+
   return {
     cacheBust: true,
     pixelRatio: 2,
-    backgroundColor: "#ffffff",
-    filter: (node: HTMLElement) => !node.classList?.contains("no-export")
+    backgroundColor: backgroundColor === "rgba(0, 0, 0, 0)" ? "#ffffff" : backgroundColor,
+    filter: (node: HTMLElement) =>
+      !node.classList?.contains("no-export") && !node.classList?.contains("react-flow__attribution")
   };
 }

@@ -6,7 +6,7 @@ import { ThemeSelector } from "./ThemeSelector";
 import { TitleField } from "./TitleField";
 import { samples } from "../data/samples";
 import { themes } from "../data/themes";
-import type { ArchitectureTheme, LayoutDirection, ThemeId } from "../types/architecture";
+import type { ArchitectureTheme, LayoutDirection, MermaidDiagramType, ThemeId, VisualSettings } from "../types/architecture";
 
 type ExportFormat = "png" | "jpeg" | "svg" | "pdf" | "markdown" | "json";
 
@@ -17,8 +17,10 @@ type Props = {
   sampleId: string;
   themeId: ThemeId;
   direction: LayoutDirection;
+  visualSettings: VisualSettings;
   mermaidCode: string;
-  validation: { valid: boolean | null; message: string };
+  diagramType: MermaidDiagramType;
+  validation: { valid: boolean | null; message: string; diagramType?: MermaidDiagramType };
   isLoading: boolean;
   exportDisabled: boolean;
   onTitleChange: (value: string) => void;
@@ -26,6 +28,7 @@ type Props = {
   onSampleChange: (id: string) => void;
   onThemeChange: (theme: ThemeId) => void;
   onDirectionChange: (direction: LayoutDirection) => void;
+  onVisualSettingsChange: (settings: VisualSettings) => void;
   onMermaidChange: (value: string) => void;
   onValidate: () => void;
   onGenerate: () => void;
@@ -55,11 +58,14 @@ export function LeftPanel(props: Props) {
         themes={Object.values(themes)}
         themeId={props.themeId}
         direction={props.direction}
+        visualSettings={props.visualSettings}
         onThemeChange={props.onThemeChange}
         onDirectionChange={props.onDirectionChange}
+        onVisualSettingsChange={props.onVisualSettingsChange}
       />
       <MermaidEditor
         value={props.mermaidCode}
+        diagramType={props.diagramType}
         validationMessage={props.validation.message}
         isValid={props.validation.valid}
         isLoading={props.isLoading}

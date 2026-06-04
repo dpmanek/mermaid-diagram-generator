@@ -17,11 +17,16 @@ export type ArchitectureGroupType = "layer" | "boundary" | "cloud" | "domain";
 
 export type LayoutDirection = "LR" | "TD" | "TB";
 
+export type MermaidDiagramType = "flowchart" | "mindmap" | "sequence" | "class" | "state" | "er" | "unsupported";
+
+export type ArchitectureNodeShape = "box" | "circle";
+
 export type ArchitectureNode = {
   id: string;
   label: string;
   rawLabel?: string;
   type: ArchitectureNodeType;
+  shape?: ArchitectureNodeShape;
   groupId?: string;
   icon?: string;
   technology?: string;
@@ -81,23 +86,32 @@ export type ArchitectureTheme = {
   shadow: string;
 };
 
+export type VisualSettings = {
+  edgeThickness: number;
+  textSize: number;
+};
+
 export type ArchitectureProject = {
   title?: string;
   description?: string;
   originalMermaid: string;
+  diagramType?: MermaidDiagramType;
   model: ArchitectureModel;
   theme: ThemeId;
   layoutDirection: LayoutDirection;
+  visualSettings?: VisualSettings;
   updatedAt: string;
   polishSuggestions?: string[];
 };
 
 export type ParseResult = {
+  diagramType?: MermaidDiagramType;
   direction: LayoutDirection;
   nodes: Array<{
     id: string;
     label: string;
     rawLabel?: string;
+    shape?: ArchitectureNodeShape;
     groupId?: string;
   }>;
   edges: Array<{

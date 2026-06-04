@@ -1,7 +1,10 @@
 import { CheckCircle2, Play, RotateCcw } from "lucide-react";
+import { diagramTypeLabel } from "../services/mermaid";
+import type { MermaidDiagramType } from "../types/architecture";
 
 type MermaidEditorProps = {
   value: string;
+  diagramType: MermaidDiagramType;
   validationMessage: string;
   isValid: boolean | null;
   isLoading: boolean;
@@ -13,6 +16,7 @@ type MermaidEditorProps = {
 
 export function MermaidEditor({
   value,
+  diagramType,
   validationMessage,
   isValid,
   isLoading,
@@ -25,7 +29,7 @@ export function MermaidEditor({
     <section className="panel-section min-h-0 flex-1">
       <div className="mb-3 flex items-center justify-between">
         <h2 className="panel-title">Mermaid Source</h2>
-        <span className="text-[11px] uppercase tracking-[0.16em] text-slate-400">Flowchart MVP</span>
+        <span className="text-[11px] uppercase tracking-[0.16em] text-slate-400">{diagramTypeLabel(diagramType)}</span>
       </div>
       <textarea
         className="editor-textarea"

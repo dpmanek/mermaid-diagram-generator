@@ -7,9 +7,9 @@ import {
   type OverlayGroup
 } from "./overlayMath";
 
-type Props = { nodes: Node[]; edges: Edge[]; color: string };
+type Props = { nodes: Node[]; edges: Edge[]; color: string; strokeWidth: number };
 
-export function RelationshipOverlay({ nodes, edges, color }: Props) {
+export function RelationshipOverlay({ nodes, edges, color, strokeWidth }: Props) {
   const groups = extractOverlayGroups(nodes);
   if (groups.length < 2) return null;
 
@@ -20,7 +20,7 @@ export function RelationshipOverlay({ nodes, edges, color }: Props) {
     : arrowsFromHeuristic(groups);
   if (!arrows.length) return null;
 
-  return <ArrowSvg arrows={arrows} color={color} />;
+  return <ArrowSvg arrows={arrows} color={color} strokeWidth={strokeWidth} />;
 }
 
 function arrowsFromEdges(edges: Edge[], groupsById: Map<string, OverlayGroup>) {
@@ -60,7 +60,7 @@ function arrowsFromHeuristic(groups: OverlayGroup[]) {
   return out;
 }
 
-function ArrowSvg({ arrows, color }: { arrows: OverlayArrow[]; color: string }) {
+function ArrowSvg({ arrows, color, strokeWidth }: { arrows: OverlayArrow[]; color: string; strokeWidth: number }) {
   const minX = Math.min(...arrows.flatMap((arrow) => [arrow.sx, arrow.tx])) - 80;
   const minY = Math.min(...arrows.flatMap((arrow) => [arrow.sy, arrow.ty])) - 80;
   const maxX = Math.max(...arrows.flatMap((arrow) => [arrow.sx, arrow.tx])) + 80;
@@ -90,6 +90,8 @@ function ArrowSvg({ arrows, color }: { arrows: OverlayArrow[]; color: string }) 
               d={path}
               className="presentation-arrow-path"
               stroke={color}
+              strokeWidth={strokeWidth}
+              style={{ strokeWidth }}
               strokeDasharray={arrow.dashed ? "12 12" : undefined}
               markerEnd="url(#presentation-arrowhead)"
             />

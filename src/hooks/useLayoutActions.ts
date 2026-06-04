@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import type { ArchitectureModel, LayoutDirection } from "../types/architecture";
+import type { ArchitectureModel, LayoutDirection, MermaidDiagramType } from "../types/architecture";
 import { layoutArchitecture } from "../services/layout";
 
 type Architecture = {
@@ -9,26 +9,27 @@ type Architecture = {
 
 type Args = {
   architecture: Architecture;
+  diagramType?: MermaidDiagramType;
   layoutDirection: LayoutDirection;
   setLayoutDirection: (direction: LayoutDirection) => void;
 };
 
-export function useLayoutActions({ architecture, layoutDirection, setLayoutDirection }: Args) {
+export function useLayoutActions({ architecture, diagramType, layoutDirection, setLayoutDirection }: Args) {
   const relayout = useCallback(async () => {
     if (!architecture.model.nodes.length) return;
-    const laidOut = await layoutArchitecture(architecture.model, layoutDirection);
+    const laidOut = await layoutArchitecture(architecture.model, layoutDirection, diagramType);
     architecture.setModel(laidOut);
-  }, [architecture, layoutDirection]);
+  }, [architecture, diagramType, layoutDirection]);
 
   const changeDirection = useCallback(
     async (direction: LayoutDirection) => {
       setLayoutDirection(direction);
       if (architecture.model.nodes.length) {
-        const laidOut = await layoutArchitecture(architecture.model, direction);
+        const laidOut = await layoutArchitecture(architecture.model, direction, diagramType);
         architecture.setModel(laidOut);
       }
     },
-    [architecture, setLayoutDirection]
+    [architecture, diagramType, setLayoutDirection]
   );
 
   return { relayout, changeDirection };

@@ -5,17 +5,19 @@ import { classifyNode, edgeTypeFromLabel } from "../utils/classification";
 export function normalizeArchitecture(parseResult: ParseResult): ArchitectureModel {
   return {
     nodes: parseResult.nodes.map((node) => {
-      const type = classifyNode(node.label);
+      const type = parseResult.diagramType === "mindmap" ? "unknown" : classifyNode(node.label);
+      const isCircle = node.shape === "circle";
       return {
         id: node.id,
         label: node.label,
         rawLabel: node.rawLabel,
         type,
+        shape: node.shape,
         groupId: node.groupId,
         icon: defaultIconByType[type],
-        technology: inferTechnology(node.label),
+        technology: parseResult.diagramType === "mindmap" ? undefined : inferTechnology(node.label),
         description: "",
-        size: { width: 210, height: 104 }
+        size: isCircle ? { width: 156, height: 156 } : { width: 210, height: 104 }
       };
     }),
     edges: parseResult.edges.map((edge, index) => ({

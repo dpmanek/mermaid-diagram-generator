@@ -1,4 +1,5 @@
-import { useState, type MouseEvent as ReactMouseEvent } from "react";
+import { useCallback, useEffect, useState, type MouseEvent as ReactMouseEvent } from "react";
+import { Maximize2, Minimize2 } from "lucide-react";
 import {
   Background,
   Controls,
@@ -12,10 +13,11 @@ import {
   type OnEdgesChange,
   type OnNodeDrag,
   type OnNodesChange,
+  type ReactFlowInstance,
   type OnSelectionChangeParams
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import type { ArchitectureNodeType, ArchitectureTheme } from "../../types/architecture";
+import type { ArchitectureNodeType, ArchitectureTheme, VisualSettings } from "../../types/architecture";
 import { AlignmentGuides } from "./AlignmentGuides";
 import { BulkToolbar } from "./BulkToolbar";
 import { CanvasContextMenu, type CanvasMenu } from "./ContextMenu";
@@ -31,9 +33,11 @@ type Props = {
   nodes: Node[];
   edges: Edge[];
   theme: ArchitectureTheme;
+  visualSettings: VisualSettings;
   canvasRef: React.RefObject<HTMLDivElement | null>;
   onNodesChange: OnNodesChange;
   onEdgesChange: OnEdgesChange;
+  onFlowReady: (instance: ReactFlowInstance) => void;
   onConnect: OnConnect;
   onReconnect: OnReconnect;
   onSelectionChange: (params: OnSelectionChangeParams) => void;
@@ -55,9 +59,11 @@ export function DiagramCanvas({
   nodes,
   edges,
   theme,
+  visualSettings,
   canvasRef,
   onNodesChange,
   onEdgesChange,
+  onFlowReady,
   onConnect,
   onReconnect,
   onSelectionChange,
@@ -75,10 +81,76 @@ export function DiagramCanvas({
   onBulkDistribute
 }: Props) {
   const [isInteractive, setIsInteractive] = useState(true);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isAppFullscreen, setIsAppFullscreen] = useState(false);
   const [menu, setMenu] = useState<CanvasMenu | null>(null);
   const [guides, setGuides] = useState<AlignmentGuide[]>([]);
-  const { screenToFlowPosition } = useReactFlow();
+  const { fitView, screenToFlowPosition } = useReactFlow();
   useAutoFit(nodes);
+
+  const fitCanvasView = useCallback(() => {
+    window.setTimeout(() => fitView({ padding: 0.18, duration: 240 }), 80);
+  }, [fitView]);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      const isNativeFullscreen = document.fullscreenElement === canvasRef.current;
+      setIsFullscreen(isNativeFullscreen);
+      if (isNativeFullscreen) {
+        setIsAppFullscreen(false);
+        fitCanvasView();
+      }
+    };
+
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
+  }, [canvasRef, fitCanvasView]);
+
+  useEffect(() => {
+    if (!isAppFullscreen) return;
+    fitCanvasView();
+  }, [fitCanvasView, isAppFullscreen]);
+
+  useEffect(() => {
+    if (!isAppFullscreen) return;
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsAppFullscreen(false);
+        setIsFullscreen(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [isAppFullscreen]);
+
+  const toggleFullscreen = useCallback(() => {
+    const target = canvasRef.current;
+    if (!target) return;
+
+    if (document.fullscreenElement === target) {
+      void document.exitFullscreen();
+      return;
+    }
+
+    if (isAppFullscreen) {
+      setIsAppFullscreen(false);
+      setIsFullscreen(false);
+      return;
+    }
+
+    if (document.fullscreenEnabled && target.requestFullscreen) {
+      void target.requestFullscreen().catch(() => {
+        setIsAppFullscreen(true);
+        setIsFullscreen(true);
+      });
+      return;
+    }
+
+    setIsAppFullscreen(true);
+    setIsFullscreen(true);
+  }, [canvasRef, isAppFullscreen]);
 
   const eventPosition = (event: MouseEvent | ReactMouseEvent) =>
     screenToFlowPosition({ x: event.clientX, y: event.clientY });
@@ -91,7 +163,7 @@ export function DiagramCanvas({
     <main className="canvas-shell" style={{ background: theme.canvas }} onClick={() => menu && setMenu(null)}>
       <div
         ref={canvasRef}
-        className="canvas-export-surface"
+        className={`canvas-export-surface${isAppFullscreen ? " is-app-fullscreen" : ""}`}
         style={{ background: theme.canvas }}
         onDoubleClick={(event) => {
           if (event.target instanceof Element && event.target.classList.contains("react-flow__pane")) {
@@ -99,6 +171,18 @@ export function DiagramCanvas({
           }
         }}
       >
+        <button
+          type="button"
+          className="canvas-fullscreen-button no-export nodrag nopan"
+          aria-label={isFullscreen ? "Exit fullscreen" : "View graph fullscreen"}
+          title={isFullscreen ? "Exit fullscreen" : "View graph fullscreen"}
+          onClick={(event) => {
+            event.stopPropagation();
+            toggleFullscreen();
+          }}
+        >
+          {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+        </button>
         {nodes.length ? (
           <ReactFlow
             nodes={nodes}
@@ -107,6 +191,7 @@ export function DiagramCanvas({
             edgeTypes={edgeTypes}
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
+            onInit={onFlowReady}
             onConnect={onConnect}
             onReconnect={onReconnect}
             onSelectionChange={onSelectionChange}
@@ -158,7 +243,7 @@ export function DiagramCanvas({
             defaultEdgeOptions={{
               type: "smoothstep",
               animated: false,
-              style: { stroke: theme.edge, strokeWidth: 2.2 },
+              style: { stroke: theme.edge, strokeWidth: visualSettings.edgeThickness },
               markerEnd: { type: "arrowclosed", color: theme.edge }
             }}
           >
@@ -179,7 +264,7 @@ export function DiagramCanvas({
               onDeleteEdge={onDeleteEdge}
               onBringToFront={onBringToFront}
             />
-            <RelationshipOverlay nodes={nodes} edges={edges} color={theme.accent} />
+            <RelationshipOverlay nodes={nodes} edges={edges} color={theme.accent} strokeWidth={visualSettings.edgeThickness + 0.4} />
             <Background color={theme.border} gap={26} size={1} />
             <Controls className="no-export" onInteractiveChange={setIsInteractive} />
             <MiniMap

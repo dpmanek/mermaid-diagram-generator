@@ -1,19 +1,20 @@
 import { useCallback, useRef, useState } from "react";
-import type { ArchitectureModel, LayoutDirection } from "../types/architecture";
+import type { ArchitectureModel, LayoutDirection, MermaidDiagramType } from "../types/architecture";
 import { normalizeArchitecture } from "../services/architectureNormalizer";
 import { layoutArchitecture } from "../services/layout";
-import { parseMermaidFlowchart, parseMermaidFlowchartAst, validateMermaid } from "../services/mermaid";
+import { parseMermaidDiagram, validateMermaid } from "../services/mermaid";
 import { getMockPolishSuggestions } from "../services/polish";
 
 type Args = {
   onModel: (model: ArchitectureModel) => void;
   onDirection: (direction: LayoutDirection) => void;
-  onValidation: (validation: { valid: boolean | null; message: string }) => void;
+  onDiagramType: (diagramType: MermaidDiagramType) => void;
+  onValidation: (validation: { valid: boolean | null; message: string; diagramType?: MermaidDiagramType }) => void;
   onSuggestions: (suggestions: string[]) => void;
   onClearSelection: () => void;
 };
 
-export function useGeneration({ onModel, onDirection, onValidation, onSuggestions, onClearSelection }: Args) {
+export function useGeneration({ onModel, onDirection, onDiagramType, onValidation, onSuggestions, onClearSelection }: Args) {
   const [isLoading, setIsLoading] = useState(false);
   const requestRef = useRef(0);
 
@@ -27,19 +28,14 @@ export function useGeneration({ onModel, onDirection, onValidation, onSuggestion
         if (requestRef.current !== requestId) return;
         onValidation(validation);
         if (!validation.valid) return;
-        let parsed;
-        try {
-          parsed = await parseMermaidFlowchartAst(source);
-          if (!parsed.nodes.length) parsed = parseMermaidFlowchart(source);
-        } catch {
-          parsed = parseMermaidFlowchart(source);
-        }
+        const parsed = await parseMermaidDiagram(source);
         if (requestRef.current !== requestId) return;
         const direction = preferredDirection ?? parsed.direction;
         const normalized = normalizeArchitecture(parsed);
-        const laidOut = await layoutArchitecture(normalized, direction);
+        const laidOut = await layoutArchitecture(normalized, direction, parsed.diagramType);
         if (requestRef.current !== requestId) return;
         onDirection(direction);
+        if (parsed.diagramType) onDiagramType(parsed.diagramType);
         onModel(laidOut);
         onSuggestions(getMockPolishSuggestions(laidOut));
         onClearSelection();
@@ -53,7 +49,7 @@ export function useGeneration({ onModel, onDirection, onValidation, onSuggestion
         if (requestRef.current === requestId) setIsLoading(false);
       }
     },
-    [onClearSelection, onDirection, onModel, onSuggestions, onValidation]
+    [onClearSelection, onDiagramType, onDirection, onModel, onSuggestions, onValidation]
   );
 
   return { generateFromCode, isLoading };

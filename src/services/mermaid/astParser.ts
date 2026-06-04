@@ -105,6 +105,7 @@ export async function parseMermaidFlowchartAst(source: string): Promise<ParseRes
   }));
 
   return {
+    diagramType: "flowchart",
     direction,
     nodes,
     edges,

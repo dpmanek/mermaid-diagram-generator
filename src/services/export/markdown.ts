@@ -14,6 +14,7 @@ export function exportMarkdown(project: ArchitectureProject, filename = "archfor
   const markdown = `# ${title}
 
 Generated: ${new Date(project.updatedAt).toLocaleString()}
+Diagram type: ${project.diagramType ?? "flowchart"}
 
 ## Architecture Summary
 
